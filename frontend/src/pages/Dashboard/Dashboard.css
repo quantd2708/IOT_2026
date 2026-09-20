@@ -1,0 +1,408 @@
+
+.home-dashboard {
+  min-width: 0;
+  min-height: 100%;
+  padding: 22px 28px;
+  background: #0d1114;
+  color: #dce3e8;
+  font-family: Inter, Arial, sans-serif;
+  box-sizing: border-box;
+}
+
+.home-dashboard *,
+.home-dashboard *::before,
+.home-dashboard *::after {
+  box-sizing: border-box;
+}
+
+.home-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 23px;
+  gap: 20px;
+}
+
+.home-dashboard-header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 6px;
+  letter-spacing: -0.4px;
+}
+
+.home-dashboard-breadcrumb,
+.home-dashboard-clock small {
+  display: block;
+  font-family: "JetBrains Mono", monospace;
+  color: #52616b;
+  font-size: 9px;
+  letter-spacing: 0.8px;
+}
+
+.home-dashboard-clock {
+  text-align: right;
+  font-family: "JetBrains Mono", monospace;
+  color: #82919b;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.home-dashboard-clock small {
+  letter-spacing: 0;
+  font-size: 9px;
+}
+
+.home-dashboard-sensors {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 15px;
+}
+
+.home-sensor-card {
+  min-height: 106px;
+  padding: 13px 17px 15px;
+  background: #151b20;
+  border: 1px solid #283239;
+  border-top-width: 2px;
+  border-radius: 3px;
+}
+
+.home-sensor-card.temperature {
+  border-top-color: #ff795f;
+}
+
+.home-sensor-card.humidity {
+  border-top-color: #42c8e9;
+}
+
+.home-sensor-card.light {
+  border-top-color: #e9bd32;
+}
+
+.home-sensor-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #85939d;
+  font-size: 11px;
+}
+
+.home-sensor-card.temperature .home-sensor-label svg {
+  color: #ff795f;
+}
+
+.home-sensor-card.humidity .home-sensor-label svg {
+  color: #42c8e9;
+}
+
+.home-sensor-card.light .home-sensor-label svg {
+  color: #e9bd32;
+}
+
+.home-sensor-reading {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.home-sensor-reading strong {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: -1.5px;
+}
+
+.home-sensor-reading span {
+  color: #63717b;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+}
+
+.home-dashboard-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 234px;
+  gap: 13px;
+  align-items: stretch;
+}
+
+.home-chart-panel,
+.home-device-panel {
+  min-width: 0;
+  background: #151b20;
+  border: 1px solid #283239;
+  border-radius: 3px;
+}
+
+.home-chart-panel {
+  position: relative;
+  padding: 16px 16px 12px;
+}
+
+.home-chart-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  min-height: 26px;
+  margin-bottom: 12px;
+}
+
+.home-chart-heading h2 {
+  font-size: 12px;
+  font-weight: 500;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.home-chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #75838d;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.home-chart-legend span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.home-chart-legend i {
+  width: 8px;
+  height: 8px;
+  display: inline-block;
+  border-radius: 1px;
+}
+
+.legend-temp i {
+  background: #ff795f;
+}
+
+.legend-humidity i {
+  background: #42c8e9;
+}
+
+.legend-light i {
+  background: #e9bd32;
+  border: 1px solid #e9bd32;
+  background: transparent;
+}
+
+.home-chart {
+  width: 100%;
+  height: 260px;
+  min-width: 0;
+}
+
+.home-chart-y-label {
+  position: absolute;
+  left: 4px;
+  top: 54%;
+  transform: translate(-35%, -50%) rotate(-90deg);
+  color: #52616b;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  pointer-events: none;
+}
+
+.home-device-panel {
+  padding: 15px 15px 0;
+}
+
+.home-device-heading {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #283239;
+}
+
+.home-device-heading h2 {
+  font-size: 12px;
+  margin: 0 0 5px;
+  font-weight: 600;
+}
+
+.home-device-heading span {
+  display: block;
+  color: #52616b;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  letter-spacing: 0.4px;
+}
+
+.home-device-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 53px;
+  border-bottom: 1px solid #283239;
+}
+
+.home-device-row:last-child {
+  border-bottom: 0;
+}
+
+.home-device-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  color: #52616b;
+  background: #1a2228;
+  border: 1px solid #283239;
+  border-radius: 3px;
+}
+
+.home-device-icon.is-on {
+  color: #e9bd32;
+  background: #3b341d;
+  border-color: #3b341d;
+}
+
+.home-device-details {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.5;
+}
+
+.home-device-details strong {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.home-device-details span,
+.home-device-details small {
+  display: inline;
+  color: #52616b;
+  font-size: 9px;
+}
+
+.home-device-details small.is-on {
+  color: #4ade80;
+}
+
+.home-device-switch {
+  width: 35px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 20px;
+  border: 1px solid #283239;
+  background: #1c252b;
+  padding: 2px;
+  cursor: pointer;
+}
+
+.home-device-switch span {
+  display: block;
+  width: 14px;
+  height: 14px;
+  background: #46545d;
+  border-radius: 50%;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.home-device-switch.is-on {
+  border-color: #276843;
+  background: #153526;
+}
+
+.home-device-switch.is-on span {
+  transform: translateX(14px);
+  background: #4ade80;
+}
+
+.home-dashboard-refresh {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 12px 0 0 auto;
+  padding: 7px 10px;
+  color: #82919b;
+  background: transparent;
+  border: 1px solid #283239;
+  border-radius: 3px;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.home-dashboard-refresh:hover {
+  color: #dce3e8;
+  border-color: #52616b;
+}
+
+.is-spinning {
+  animation: home-spin 1s linear infinite;
+}
+
+@keyframes home-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (min-width: 1500px) {
+  .home-dashboard-main {
+    grid-template-columns: minmax(0, 1fr) 234px;
+  }
+
+  .home-chart {
+    height: 260px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .home-dashboard-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-device-panel {
+    padding-bottom: 8px;
+  }
+
+  .home-device-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .home-device-row {
+    border-bottom: 0;
+  }
+
+  .home-chart-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .home-chart-legend {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 650px) {
+  .home-dashboard {
+    padding: 18px 14px;
+  }
+
+  .home-dashboard-sensors {
+    grid-template-columns: 1fr;
+  }
+
+  .home-device-list {
+    grid-template-columns: 1fr;
+  }
+
+  .home-chart {
+    height: 230px;
+  }
+
+  .home-chart-heading h2 {
+    white-space: normal;
+  }
+}
