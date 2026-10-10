@@ -1,10 +1,20 @@
-
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
 
 :root {
-  font-family: "Inter", sans-serif;
-  color: #dce3e7;
-  background: #0c1115;
+  --bg: #f3f6fb;
+  --panel: #ffffff;
+  --panel-soft: #f8fafc;
+  --border: #e5e7eb;
+  --text: #111827;
+  --text-soft: #475569;
+  --muted: #64748b;
+  --green: #22c55e;
+  --blue: #38bdf8;
+  --amber: #f59e0b;
+
+  color: #111827;
+  background: #f3f6fb;
+  font-family: Arial, Helvetica, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -16,15 +26,16 @@
 }
 
 html {
+  height: 100%;
   min-width: 320px;
-  min-height: 100%;
 }
 
 body {
+  height: 100%;
   min-width: 320px;
-  min-height: 100vh;
   margin: 0;
-  background: #0c1115;
+  background: linear-gradient(180deg, #f8fafc 0%, #f3f6fb 100%);
+  color: var(--text);
 }
 
 button {
@@ -34,10 +45,10 @@ button {
 
 button:focus-visible,
 a:focus-visible {
-  outline: 2px solid #45c5e5;
+  outline: 2px solid var(--blue);
   outline-offset: 3px;
 }
 
 #root {
-  min-height: 100vh;
+  height: 100%;
 }

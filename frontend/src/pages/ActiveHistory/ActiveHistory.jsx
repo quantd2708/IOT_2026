@@ -1,188 +1,158 @@
-
 import { useMemo, useState } from "react";
-import {
-  Search,
-  Filter,
-  RotateCcw,
-  Lightbulb,
-  Fan,
-  Blinds,
-  Camera,
-  AirVent,
-} from "lucide-react";
+import { Search, Filter, RotateCcw } from "lucide-react";
 import "./ActiveHistory.css";
 
+const DEFAULT_PAGE_SIZE = 10;
+const PAGINATION_DELTA = 1;
+
 const deviceTypes = {
-  fan: { label: "Quạt", location: "Ban công", Icon: Fan },
-  light: { label: "Đèn 1", location: "Phòng khách", Icon: Lightbulb },
-  air: { label: "Điều hòa", location: "Phòng khách", Icon: AirVent },
-  curtain: { label: "Rèm cửa", location: "Phòng ngủ", Icon: Blinds },
-  camera: { label: "Camera cổng", location: "Sân trước", Icon: Camera },
+  light1: { label: "Đèn 1", location: "Phòng khách" },
+  light2: { label: "Đèn 2", location: "Phòng ngủ" },
+  light3: { label: "Đèn 3", location: "Ban công" },
 };
-
-const sampleEvents = [
-  ["fan", "Tắt", "success", "09:35", "user"],
-  ["fan", "Tắt", "success", "09:12", "sensor"],
-  ["light", "Tắt", "success", "08:49", "sensor"],
-  ["air", "Điều chỉnh", "success", "08:26", "sensor"],
-  ["light", "Điều chỉnh", "success", "08:03", "user"],
-  ["light", "Điều chỉnh", "success", "07:40", "user"],
-  ["curtain", "Tắt", "success", "07:17", "user"],
-  ["curtain", "Bật", "success", "06:54", "sensor"],
-  ["curtain", "Bật", "failed", "06:31", "user"],
-  ["camera", "Tắt", "success", "06:08", "schedule"],
-  ["air", "Bật", "success", "05:45", "user"],
-  ["light", "Bật", "success", "05:22", "sensor"],
-  ["fan", "Bật", "failed", "05:00", "user"],
-  ["camera", "Bật", "success", "04:37", "schedule"],
-  ["curtain", "Tắt", "success", "04:14", "user"],
-  ["air", "Tắt", "success", "03:51", "sensor"],
-];
-
-const sampleData = Array.from({ length: 40 }, (_, index) => {
-  const event = sampleEvents[index % sampleEvents.length];
-  const day = index < 10 ? "15" : "14";
-
-  return {
-    id: `EV-${2087 - index}`,
-    device: event[0],
-    action: event[1],
-    status: event[2],
-    time: event[3],
-    source: event[4],
-    date: `2026-08-${day}`,
-  };
-});
 
 const actionLabels = {
   all: "Tất cả",
   Bật: "Bật",
   Tắt: "Tắt",
-  "Điều chỉnh": "Điều chỉnh",
 };
 
 const statusLabels = {
   all: "Tất cả",
-  success: "Thành công",
-  failed: "Thất bại",
+  Bật: "Bật",
+  Tắt: "Tắt",
 };
 
-const sourceLabels = {
-  user: "Người dùng",
-  sensor: "Cảm biến kích hoạt",
-  schedule: "Tự động (hẹn giờ)",
+const actorList = [
+  "Trần Đức Quân",
+];
+
+const sampleData = Array.from({ length: 150 }, (_, index) => {
+  const devices = ["light1", "light2", "light3"];
+  const actions = ["Bật", "Tắt"];
+
+  const device = devices[Math.floor(Math.random() * devices.length)];
+  const action = actions[Math.floor(Math.random() * actions.length)];
+  const status = action;
+  const actor = actorList[Math.floor(Math.random() * actorList.length)];
+
+  const d = new Date("2026-08-15T22:00:00");
+  d.setMinutes(d.getMinutes() - index * 17);
+
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  const seconds = String((index * 13) % 60).padStart(2, "0");
+
+  return {
+    id: `AC-${397 - index}`,
+    device,
+    action,
+    status,
+    actor,
+    time: `${hours}:${minutes}:${seconds}`,
+    date: `${year}-${month}-${day}`,
+  };
+});
+
+const formatDate = (date) => {
+  if (!date) return "";
+  const [year, month, day] = date.split("-");
+  return `${day}/${month}/${year}`;
+};
+
+const formatDateTime = (item) => {
+  return `${item.time} · ${formatDate(item.date)}`;
+};
+
+const getPaginationRange = (currentPage, totalPages) => {
+  const range = [];
+
+  for (let i = 1; i <= totalPages; i++) {
+    const isFirst = i === 1;
+    const isLast = i === totalPages;
+    const isNearCurrent = i >= currentPage - PAGINATION_DELTA && i <= currentPage + PAGINATION_DELTA;
+
+    if (isFirst || isLast || isNearCurrent) {
+      range.push(i);
+    }
+  }
+
+  const rangeWithDots = [];
+  let previous;
+
+  for (const page of range) {
+    if (previous) {
+      if (page - previous === 2) {
+        rangeWithDots.push(previous + 1);
+      } else if (page - previous !== 1) {
+        rangeWithDots.push("...");
+      }
+    }
+    rangeWithDots.push(page);
+    previous = page;
+  }
+
+  return rangeWithDots;
 };
 
 function ActiveHistory() {
   const [deviceFilter, setDeviceFilter] = useState("all");
   const [actionFilter, setActionFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [startDate, setStartDate] = useState("2026-08-14");
-  const [endDate, setEndDate] = useState("2026-08-15");
-  const [search, setSearch] = useState("");
+  const [timeSearch, setTimeSearch] = useState("");
 
   const [appliedFilters, setAppliedFilters] = useState({
     device: "all",
     action: "all",
     status: "all",
-    start: "2026-08-14",
-    end: "2026-08-15",
-    search: "",
+    timeSearch: "",
   });
 
   const [sortOrder, setSortOrder] = useState("desc");
   const [currentPage, setCurrentPage] = useState(1);
-
-  const pageSize = 10;
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const filteredData = useMemo(() => {
+    const keyword = appliedFilters.timeSearch.trim().toLowerCase();
+
     const result = sampleData.filter((item) => {
-      const matchesDevice =
-        appliedFilters.device === "all" ||
-        item.device === appliedFilters.device;
+      const matchesDevice = appliedFilters.device === "all" || item.device === appliedFilters.device;
+      const matchesAction = appliedFilters.action === "all" || item.action === appliedFilters.action;
+      const matchesStatus = appliedFilters.status === "all" || item.status === appliedFilters.status;
 
-      const matchesAction =
-        appliedFilters.action === "all" ||
-        item.action === appliedFilters.action;
+      const displayDate = formatDate(item.date);
+      const dateTime = formatDateTime(item);
+      const searchableTime = [item.time, item.date, displayDate, dateTime].join(" ").toLowerCase();
 
-      const matchesStatus =
-        appliedFilters.status === "all" ||
-        item.status === appliedFilters.status;
+      const matchesTime = !keyword || searchableTime.includes(keyword);
 
-      const matchesStart =
-        !appliedFilters.start ||
-        item.date >= appliedFilters.start;
-
-      const matchesEnd =
-        !appliedFilters.end ||
-        item.date <= appliedFilters.end;
-
-      const keyword = appliedFilters.search.toLowerCase();
-
-      const device = deviceTypes[item.device];
-
-      const searchableText = [
-        item.id,
-        device.label,
-        device.location,
-        item.action,
-        statusLabels[item.status],
-        sourceLabels[item.source],
-        item.time,
-        item.date,
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      return (
-        matchesDevice &&
-        matchesAction &&
-        matchesStatus &&
-        matchesStart &&
-        matchesEnd &&
-        searchableText.includes(keyword)
-      );
+      return matchesDevice && matchesAction && matchesStatus && matchesTime;
     });
 
     result.sort((a, b) => {
-      const dateTimeA = new Date(
-        `${a.date}T${a.time}:00`
-      ).getTime();
+      const dateTimeA = new Date(`${a.date}T${a.time}`).getTime();
+      const dateTimeB = new Date(`${b.date}T${b.time}`).getTime();
 
-      const dateTimeB = new Date(
-        `${b.date}T${b.time}:00`
-      ).getTime();
-
-      return sortOrder === "desc"
-        ? dateTimeB - dateTimeA
-        : dateTimeA - dateTimeB;
+      return sortOrder === "desc" ? dateTimeB - dateTimeA : dateTimeA - dateTimeB;
     });
 
     return result;
   }, [appliedFilters, sortOrder]);
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredData.length / pageSize)
-  );
-
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / pageSize));
   const safePage = Math.min(currentPage, totalPages);
-
-  const pageData = filteredData.slice(
-    (safePage - 1) * pageSize,
-    safePage * pageSize
-  );
+  const pageData = filteredData.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const applyFilters = () => {
     setAppliedFilters({
       device: deviceFilter,
       action: actionFilter,
       status: statusFilter,
-      start: startDate,
-      end: endDate,
-      search: search.trim(),
+      timeSearch: timeSearch.trim(),
     });
-
     setCurrentPage(1);
   };
 
@@ -190,26 +160,13 @@ function ActiveHistory() {
     setDeviceFilter("all");
     setActionFilter("all");
     setStatusFilter("all");
-    setStartDate("");
-    setEndDate("");
-    setSearch("");
-
+    setTimeSearch("");
     setAppliedFilters({
       device: "all",
       action: "all",
       status: "all",
-      start: "",
-      end: "",
-      search: "",
+      timeSearch: "",
     });
-
-    setCurrentPage(1);
-  };
-
-  const toggleSortOrder = () => {
-    setSortOrder((prev) =>
-      prev === "desc" ? "asc" : "desc"
-    );
     setCurrentPage(1);
   };
 
@@ -217,60 +174,41 @@ function ActiveHistory() {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   };
 
-  const [now] = useState(() => new Date());
+  const handlePageSizeChange = (event) => {
+    setPageSize(Number(event.target.value));
+    setCurrentPage(1);
+  };
+
+  const toggleSortOrder = () => {
+    setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"));
+    setCurrentPage(1);
+  };
 
   return (
     <main className="history-page">
-      {/* <header className="history-header">
-        <div>
-          <h1>Lịch sử hoạt động</h1>
-          <span>ACTIVE HISTORY</span>
-        </div>
-
-        <div className="history-clock">
-          <span>
-            {now.toLocaleTimeString("vi-VN", {
-              hour12: false,
-            })}
-          </span>
-          <small>
-            {now.toLocaleDateString("vi-VN", {
-              weekday: "long",
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            })}
-          </small>
-        </div>
-      </header> */}
-
       <section className="history-filter-panel">
-        <div className="history-filter-group">
+        <div className="history-filter-group history-device-group">
           <label htmlFor="history-device">THIẾT BỊ</label>
           <select
             id="history-device"
             value={deviceFilter}
-            onChange={(event) =>
-              setDeviceFilter(event.target.value)
-            }
+            onChange={(event) => setDeviceFilter(event.target.value)}
           >
-            <option value="all">Tất cả </option>
+            <option value="all">Tất cả</option>
             {Object.entries(deviceTypes).map(([key, device]) => (
               <option key={key} value={key}>
-                {device.label}
+                {device.label} 
               </option>
             ))}
           </select>
         </div>
 
-        <div className="history-filter-group">
+        <div className="history-filter-group history-action-group">
           <label htmlFor="history-action">HÀNH ĐỘNG</label>
           <select
             id="history-action"
             value={actionFilter}
-            onChange={(event) =>
-              setActionFilter(event.target.value)
-            }
+            onChange={(event) => setActionFilter(event.target.value)}
           >
             {Object.entries(actionLabels).map(([key, label]) => (
               <option key={key} value={key}>
@@ -280,14 +218,12 @@ function ActiveHistory() {
           </select>
         </div>
 
-        <div className="history-filter-group">
+        <div className="history-filter-group history-status-group">
           <label htmlFor="history-status">TRẠNG THÁI</label>
           <select
             id="history-status"
             value={statusFilter}
-            onChange={(event) =>
-              setStatusFilter(event.target.value)
-            }
+            onChange={(event) => setStatusFilter(event.target.value)}
           >
             {Object.entries(statusLabels).map(([key, label]) => (
               <option key={key} value={key}>
@@ -297,61 +233,31 @@ function ActiveHistory() {
           </select>
         </div>
 
-        <div className="history-filter-group history-date-group">
-          <label>TỪ NGÀY – ĐẾN NGÀY (LỌC THỦ CÔNG)</label>
-          <div className="history-date-range">
-            <input
-              aria-label="Từ ngày"
-              type="date"
-              value={startDate}
-              onChange={(event) =>
-                setStartDate(event.target.value)
-              }
-            />
-            <span>→</span>
-            <input
-              aria-label="Đến ngày"
-              type="date"
-              value={endDate}
-              onChange={(event) =>
-                setEndDate(event.target.value)
-              }
-            />
-          </div>
-        </div>
-
         <div className="history-filter-group history-search-group">
-          <label htmlFor="history-search">TÌM KIẾM TỪ KHÓA</label>
+          <label htmlFor="history-search">TÌM KIẾM</label>
           <div className="history-search-box">
-            <Search size={15} />
+            <Search size={18} />
             <input
               id="history-search"
               type="text"
-              placeholder="Tìm ID, tên thiết bị, hành động..."
-              value={search}
-              onChange={(event) =>
-                setSearch(event.target.value)
-              }
+              placeholder="VD: 09:20:15, 15/08/2026..."
+              value={timeSearch}
+              onChange={(event) => setTimeSearch(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === "Enter") applyFilters();
+                if (event.key === "Enter") {
+                  applyFilters();
+                }
               }}
             />
           </div>
         </div>
 
-        <button
-          className="history-filter-button"
-          onClick={applyFilters}
-        >
-          <Filter size={14} />
-          Lọc
+        <button type="button" className="history-filter-button" onClick={applyFilters}>
+          Tìm kiếm
         </button>
 
-        <button
-          className="history-reset-button"
-          onClick={resetFilters}
-        >
-          <RotateCcw size={13} />
+        <button type="button" className="history-reset-button" onClick={resetFilters}>
+          <RotateCcw size={15} />
           Đặt lại
         </button>
       </section>
@@ -361,11 +267,12 @@ function ActiveHistory() {
           <table className="history-table">
             <thead>
               <tr>
-                <th className="history-id-col">ID <span>⌄</span></th>
-                <th className="history-device-col">TÊN THIẾT BỊ</th>
-                <th className="history-action-col">HÀNH ĐỘNG</th>
-                <th className="history-status-col">TRẠNG THÁI</th>
-                <th className="history-time-col">
+                <th>ID</th>
+                <th>TÊN THIẾT BỊ</th>
+                <th>NGƯỜI THỰC HIỆN</th>
+                <th>HÀNH ĐỘNG</th>
+                <th>TRẠNG THÁI</th>
+                <th>
                   <button
                     type="button"
                     className="history-sort-button"
@@ -377,9 +284,7 @@ function ActiveHistory() {
                     }
                   >
                     THỜI GIAN
-                    <span>
-                      {sortOrder === "desc" ? "↓" : "↑"}
-                    </span>
+                    <span>{sortOrder === "desc" ? "↓" : "↑"}</span>
                   </button>
                 </th>
               </tr>
@@ -388,74 +293,29 @@ function ActiveHistory() {
             <tbody>
               {pageData.map((item) => {
                 const device = deviceTypes[item.device];
-                const Icon = device.Icon;
 
                 return (
                   <tr key={item.id}>
-                    <td className="history-id-cell">
-                      {item.id}
+                    <td className="history-id-cell">{item.id}</td>
+                    <td className="history-device-cell">
+                      <strong>{device.label}</strong>
+                      <small>{device.location}</small>
                     </td>
-
-                    <td>
-                      <div className="history-device-cell">
-                        <div className="history-device-icon">
-                          <Icon size={13} />
-                        </div>
-
-                        <div>
-                          <strong>{device.label}</strong>
-                          <small>{device.location}</small>
-                        </div>
-                      </div>
+                    <td className="history-actor-cell">{item.actor}</td>
+                    <td className={`history-simple-cell ${item.action === 'Bật' ? 'status-on' : item.action === 'Tắt' ? 'status-off' : ''}`}>
+                      {actionLabels[item.action]}
                     </td>
-
-                    <td>
-                      <span
-                        className={`history-action-badge ${
-                          item.action === "Bật"
-                            ? "action-on"
-                            : item.action === "Điều chỉnh"
-                            ? "action-adjust"
-                            : "action-off"
-                        }`}
-                      >
-                        <i />
-                        {item.action}
-                      </span>
+                    <td className={`history-simple-cell ${item.status === 'Bật' ? 'status-on' : item.status === 'Tắt' ? 'status-off' : ''}`}>
+                      {statusLabels[item.status]}
                     </td>
-
-                    <td>
-                      <span
-                        className={`history-status-badge ${
-                          item.status === "success"
-                            ? "status-success"
-                            : "status-failed"
-                        }`}
-                      >
-                        <i />
-                        {statusLabels[item.status]}
-                      </span>
-                    </td>
-
-                    <td className="history-time-cell">
-                      <span>
-                        {item.time} ·{" "}
-                        {item.date.split("-").reverse().join("/")}
-                      </span>
-                      <small>
-                        {item.date.endsWith("15")
-                          ? "12 giờ trước"
-                          : "1 ngày trước"}{" "}
-                        · {sourceLabels[item.source]}
-                      </small>
-                    </td>
+                    <td className="history-time-cell">{formatDateTime(item)}</td>
                   </tr>
                 );
               })}
 
               {pageData.length === 0 && (
                 <tr>
-                  <td colSpan="5" className="history-empty">
+                  <td colSpan="6" className="history-empty">
                     Không tìm thấy lịch sử hoạt động phù hợp.
                   </td>
                 </tr>
@@ -465,32 +325,71 @@ function ActiveHistory() {
         </div>
 
         <footer className="history-table-footer">
-          <span>
-            Hiển thị{" "}
-            {filteredData.length === 0
-              ? 0
-              : (safePage - 1) * pageSize + 1}
-            –
-            {Math.min(
-              safePage * pageSize,
-              filteredData.length
-            )}{" "}
-            / {filteredData.length}
-          </span>
+          <div className="history-footer-left">
+            <span className="history-result-count">
+              Hiển thị{" "}
+              {filteredData.length === 0 ? 0 : (safePage - 1) * pageSize + 1}
+              –
+              {Math.min(safePage * pageSize, filteredData.length)} /{" "}
+              {filteredData.length}
+            </span>
+
+            <div className="history-page-size">
+              <label htmlFor="history-page-size">Size page</label>
+              <select
+                id="history-page-size"
+                value={pageSize}
+                onChange={handlePageSizeChange}
+              >
+                <option value="5">5</option>
+                <option value="10">10</option>
+                <option value="15">15</option>
+                <option value="20">20</option>
+                <option value="30">30</option>
+                <option value="50">50</option>
+              </select>
+            </div>
+          </div>
 
           <div className="history-pagination">
-            {Array.from(
-              { length: totalPages },
-              (_, index) => index + 1
-            ).map((page) => (
-              <button
-                key={page}
-                className={safePage === page ? "active" : ""}
-                onClick={() => changePage(page)}
-              >
-                {page}
-              </button>
-            ))}
+            <button
+              type="button"
+              className="history-pagination-arrow"
+              disabled={safePage === 1}
+              onClick={() => changePage(safePage - 1)}
+            >
+              ‹
+            </button>
+
+            {getPaginationRange(safePage, totalPages).map((item, index) => {
+              if (item === "...") {
+                return (
+                  <span key={`dots-${index}`} className="history-pagination-dots">
+                    ...
+                  </span>
+                );
+              }
+
+              return (
+                <button
+                  type="button"
+                  key={item}
+                  className={safePage === item ? "active" : ""}
+                  onClick={() => changePage(item)}
+                >
+                  {item}
+                </button>
+              );
+            })}
+
+            <button
+              type="button"
+              className="history-pagination-arrow"
+              disabled={safePage === totalPages}
+              onClick={() => changePage(safePage + 1)}
+            >
+              ›
+            </button>
           </div>
         </footer>
       </section>

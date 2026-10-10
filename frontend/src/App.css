@@ -1,20 +1,25 @@
-
+/* 
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
 
 :root {
-  font-family: "Inter", sans-serif;
-  color: #dce3e7;
-  background: #0c1115;
+  --bg: #f3f6fb;
+  --panel: #ffffff;
+  --panel-soft: #f8fafc;
+  --border: #e5e7eb;
+  --text: #111827;
+  --text-soft: #475569;
+  --muted: #64748b;
+  --green: #22c55e;
+  --blue: #38bdf8;
+  --amber: #f59e0b;
+
+  color: #111827;
+  background: #f3f6fb;
+  font-family: Arial, Helvetica, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  --bg: #0c1115;
-  --panel: #151c21;
-  --border: #29333a;
-  --muted: #71808a;
-  --green: #4ade80;
 }
 
 * {
@@ -22,10 +27,11 @@
 }
 
 body {
-  margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: var(--bg);
+  margin: 0;
+  background: linear-gradient(180deg, #f8fafc 0%, #f3f6fb 100%);
+  color: var(--text);
 }
 
 button {
@@ -33,7 +39,7 @@ button {
 }
 
 button:focus-visible {
-  outline: 2px solid #45c5e5;
+  outline: 2px solid var(--blue);
   outline-offset: 3px;
 }
 
@@ -49,20 +55,22 @@ button:focus-visible {
   display: flex;
   flex-direction: column;
   width: 205px;
-  background: #151c21;
-  border-right: 1px solid #29333a;
+  border-right: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(8px);
 }
 
 .brand {
   height: 76px;
   padding: 21px 20px 13px;
-  border-bottom: 1px solid #29333a;
+  border-bottom: 1px solid var(--border);
 }
 
 .brand-title {
   display: flex;
   align-items: center;
   gap: 10px;
+  color: var(--text);
   font-family: "JetBrains Mono", monospace;
   font-size: 13px;
   font-weight: 600;
@@ -76,12 +84,12 @@ button:focus-visible {
   height: 8px;
   border-radius: 50%;
   background: var(--green);
-  box-shadow: 0 0 0 3px #244237;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
 }
 
 .brand-subtitle {
   margin-top: 8px;
-  color: #53616b;
+  color: var(--muted);
   font-family: "JetBrains Mono", monospace;
   font-size: 9px;
   letter-spacing: 1.2px;
@@ -103,25 +111,25 @@ button:focus-visible {
   width: 100%;
   min-height: 34px;
   padding: 8px 10px 8px 14px;
-  color: #7c8a94;
-  background: transparent;
   border: 1px solid transparent;
-  border-radius: 3px;
-  cursor: pointer;
-  text-align: left;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-soft);
   font-size: 12px;
-  transition: background 0.15s, color 0.15s;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .nav-item:hover {
-  color: #dce3e7;
-  background: #1b242a;
+  background: var(--panel-soft);
+  color: var(--text);
 }
 
 .nav-item.selected {
-  color: #dce3e7;
-  background: #20292f;
-  border-color: #29333a;
+  border-color: #d7ebff;
+  background: #edf6ff;
+  color: var(--text);
 }
 
 .nav-item.selected::before {
@@ -136,7 +144,7 @@ button:focus-visible {
 
 .nav-item small {
   margin-left: auto;
-  color: #53616b;
+  color: var(--muted);
   font-family: "JetBrains Mono", monospace;
   font-size: 9px;
 }
@@ -145,11 +153,11 @@ button:focus-visible {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: auto;
   min-height: 56px;
+  margin-top: auto;
   padding: 0 20px;
-  border-top: 1px solid #29333a;
-  color: #53616b;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
   font-family: "JetBrains Mono", monospace;
   font-size: 9px;
   letter-spacing: 0.7px;
@@ -171,13 +179,13 @@ button:focus-visible {
   justify-content: space-between;
   min-height: 72px;
   padding: 12px 28px;
-  border-bottom: 1px solid #29333a;
-  background: #151c21;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.96);
 }
 
 .page-heading h1 {
   margin: 0;
-  color: #e0e6e9;
+  color: var(--text);
   font-size: 17px;
   font-weight: 600;
   letter-spacing: -0.5px;
@@ -186,7 +194,7 @@ button:focus-visible {
 .page-heading > span {
   display: block;
   margin-top: 6px;
-  color: #566570;
+  color: var(--muted);
   font-family: "JetBrains Mono", monospace;
   font-size: 9px;
   letter-spacing: 0.7px;
@@ -197,13 +205,13 @@ button:focus-visible {
   flex-direction: column;
   align-items: flex-end;
   gap: 3px;
-  color: #687984;
+  color: var(--muted);
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
 }
 
 .clock strong {
-  color: #a1adb5;
+  color: var(--text-soft);
   font-size: 11px;
   font-weight: 400;
 }
@@ -211,6 +219,7 @@ button:focus-visible {
 .dashboard-content {
   padding: 14px 28px 28px;
 }
+
 
 .sensor-grid {
   display: grid;
@@ -224,9 +233,10 @@ button:focus-visible {
   min-height: 106px;
   padding: 15px 17px;
   overflow: hidden;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 3px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
 .sensor-card::before {
@@ -254,7 +264,7 @@ button:focus-visible {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #81909a;
+  color: #475569;
   font-size: 11px;
 }
 
@@ -275,7 +285,7 @@ button:focus-visible {
   align-items: baseline;
   gap: 5px;
   margin-top: 11px;
-  color: #e0e6e9;
+  color: #111827;
   font-family: "JetBrains Mono", monospace;
   font-size: 34px;
   font-weight: 500;
@@ -284,7 +294,7 @@ button:focus-visible {
 }
 
 .sensor-value span {
-  color: #65737d;
+  color: #64748b;
   font-size: 12px;
   font-weight: 400;
   letter-spacing: 0;
@@ -299,9 +309,10 @@ button:focus-visible {
 
 .panel {
   min-width: 0;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 3px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
 .chart-panel {
@@ -321,7 +332,7 @@ button:focus-visible {
 .panel-heading h2,
 .devices-heading h2 {
   margin: 0;
-  color: #dce3e7;
+  color: #111827;
   font-size: 12px;
   font-weight: 500;
 }
@@ -330,7 +341,7 @@ button:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: 13px;
-  color: #81909a;
+  color: #64748b;
   font-family: "JetBrains Mono", monospace;
   font-size: 9px;
 }
@@ -371,13 +382,13 @@ button:focus-visible {
 
 .devices-heading {
   padding-bottom: 13px;
-  border-bottom: 1px solid #29333a;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .devices-heading > span {
   display: block;
   margin-top: 5px;
-  color: #566570;
+  color: #64748b;
   font-family: "JetBrains Mono", monospace;
   font-size: 9px;
   letter-spacing: 0.5px;
@@ -388,7 +399,7 @@ button:focus-visible {
   align-items: center;
   gap: 10px;
   min-height: 53px;
-  border-bottom: 1px solid #29333a;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .device-row:last-child {
@@ -401,16 +412,16 @@ button:focus-visible {
   place-items: center;
   width: 30px;
   height: 30px;
-  color: #53616b;
-  background: #1b242a;
-  border: 1px solid #29333a;
-  border-radius: 4px;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
 }
 
 .device-icon.active {
-  color: #e6bd36;
-  background: #40371b;
-  border-color: #40371b;
+  color: #b45309;
+  background: #fff7ed;
+  border-color: #fed7aa;
 }
 
 .device-info {
@@ -419,14 +430,14 @@ button:focus-visible {
 }
 
 .device-name {
-  color: #dce3e7;
+  color: #111827;
   font-size: 11px;
 }
 
 .device-location {
   margin-top: 4px;
   overflow: hidden;
-  color: #566570;
+  color: #64748b;
   font-family: "JetBrains Mono", monospace;
   font-size: 9px;
   text-overflow: ellipsis;
@@ -434,7 +445,7 @@ button:focus-visible {
 }
 
 .device-location.online {
-  color: #4ade80;
+  color: #16a34a;
 }
 
 .toggle {
@@ -443,8 +454,8 @@ button:focus-visible {
   width: 34px;
   height: 19px;
   padding: 0;
-  background: #1d262c;
-  border: 1px solid #303a40;
+  background: #e2e8f0;
+  border: 1px solid #cbd5e1;
   border-radius: 20px;
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s;
@@ -456,18 +467,18 @@ button:focus-visible {
   left: 3px;
   width: 11px;
   height: 11px;
-  background: #52616a;
+  background: #94a3b8;
   border-radius: 50%;
   transition: transform 0.2s, background 0.2s;
 }
 
 .toggle.on {
-  background: #1e4435;
-  border-color: #26764c;
+  background: #dcfce7;
+  border-color: #86efac;
 }
 
 .toggle.on span {
-  background: #4ade80;
+  background: #22c55e;
   transform: translateX(15px);
 }
 
@@ -479,14 +490,15 @@ button:focus-visible {
   min-height: 350px;
   margin: 28px;
   padding: 30px;
-  color: #71808a;
-  background: var(--panel);
-  border: 1px solid var(--border);
+  color: #64748b;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
   text-align: center;
+  border-radius: 8px;
 }
 
 .placeholder-panel h2 {
-  color: #dce3e7;
+  color: #111827;
   font-size: 18px;
 }
 
@@ -659,4 +671,4 @@ button:focus-visible {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
-}
+} */

@@ -1,17 +1,23 @@
-
 .app-shell {
-  min-height: 100vh;
-  background: #0c1115;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
 }
 
 .main-content {
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   margin-left: 205px;
+  overflow: hidden;
 }
 
 .page-content {
+  flex: 1 1 auto;
   min-width: 0;
+  min-height: 0;
   padding: 14px 28px 28px;
+  overflow-y: auto;
 }
 
 @media (max-width: 700px) {
