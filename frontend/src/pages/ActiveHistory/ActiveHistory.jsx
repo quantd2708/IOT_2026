@@ -1,15 +1,11 @@
-import { useMemo, useState } from "react";
-import { Search, Filter, RotateCcw } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Search, RotateCcw } from "lucide-react";
+import { fetchActions } from "../../services/actionService";
+import { fetchDevices } from "../../services/deviceService";
 import "./ActiveHistory.css";
 
 const DEFAULT_PAGE_SIZE = 10;
 const PAGINATION_DELTA = 1;
-
-const deviceTypes = {
-  light1: { label: "Đèn 1", location: "Phòng khách" },
-  light2: { label: "Đèn 2", location: "Phòng ngủ" },
-  light3: { label: "Đèn 3", location: "Ban công" },
-};
 
 const actionLabels = {
   all: "Tất cả",
@@ -19,43 +15,10 @@ const actionLabels = {
 
 const statusLabels = {
   all: "Tất cả",
-  Bật: "Bật",
-  Tắt: "Tắt",
+  SUCCESS: "Success",
+  FAILED: "Failed",
 };
 
-const actorList = [
-  "Trần Đức Quân",
-];
-
-const sampleData = Array.from({ length: 150 }, (_, index) => {
-  const devices = ["light1", "light2", "light3"];
-  const actions = ["Bật", "Tắt"];
-
-  const device = devices[Math.floor(Math.random() * devices.length)];
-  const action = actions[Math.floor(Math.random() * actions.length)];
-  const status = action;
-  const actor = actorList[Math.floor(Math.random() * actorList.length)];
-
-  const d = new Date("2026-08-15T22:00:00");
-  d.setMinutes(d.getMinutes() - index * 17);
-
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const hours = String(d.getHours()).padStart(2, "0");
-  const minutes = String(d.getMinutes()).padStart(2, "0");
-  const seconds = String((index * 13) % 60).padStart(2, "0");
-
-  return {
-    id: `AC-${397 - index}`,
-    device,
-    action,
-    status,
-    actor,
-    time: `${hours}:${minutes}:${seconds}`,
-    date: `${year}-${month}-${day}`,
-  };
-});
 
 const formatDate = (date) => {
   if (!date) return "";
@@ -114,37 +77,53 @@ function ActiveHistory() {
   const [sortOrder, setSortOrder] = useState("desc");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [devices, setDevices] = useState([]);
+  const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const filteredData = useMemo(() => {
-    const keyword = appliedFilters.timeSearch.trim().toLowerCase();
+  useEffect(() => {
+    fetchDevices()
+      .then(setDevices)
+      .catch(() => {});
+  }, []);
 
-    const result = sampleData.filter((item) => {
-      const matchesDevice = appliedFilters.device === "all" || item.device === appliedFilters.device;
-      const matchesAction = appliedFilters.action === "all" || item.action === appliedFilters.action;
-      const matchesStatus = appliedFilters.status === "all" || item.status === appliedFilters.status;
+  useEffect(() => {
+    let ignore = false;
 
-      const displayDate = formatDate(item.date);
-      const dateTime = formatDateTime(item);
-      const searchableTime = [item.time, item.date, displayDate, dateTime].join(" ").toLowerCase();
+    async function load() {
+      setLoading(true);
+      try {
+        const res = await fetchActions({
+          device: appliedFilters.device,
+          action: appliedFilters.action,
+          status: appliedFilters.status,
+          search: appliedFilters.timeSearch,
+          sort: sortOrder,
+          page: currentPage,
+          pageSize,
+        });
+        if (ignore) return;
+        setRows(res.data);
+        setTotal(res.total);
+        setTotalPages(res.totalPages);
+        setError("");
+      } catch {
+        if (!ignore) setError("Không kết nối được server");
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
 
-      const matchesTime = !keyword || searchableTime.includes(keyword);
+    load();
+    return () => {
+      ignore = true;
+    };
+  }, [appliedFilters, sortOrder, currentPage, pageSize]);
 
-      return matchesDevice && matchesAction && matchesStatus && matchesTime;
-    });
-
-    result.sort((a, b) => {
-      const dateTimeA = new Date(`${a.date}T${a.time}`).getTime();
-      const dateTimeB = new Date(`${b.date}T${b.time}`).getTime();
-
-      return sortOrder === "desc" ? dateTimeB - dateTimeA : dateTimeA - dateTimeB;
-    });
-
-    return result;
-  }, [appliedFilters, sortOrder]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredData.length / pageSize));
   const safePage = Math.min(currentPage, totalPages);
-  const pageData = filteredData.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const applyFilters = () => {
     setAppliedFilters({
@@ -195,9 +174,9 @@ function ActiveHistory() {
             onChange={(event) => setDeviceFilter(event.target.value)}
           >
             <option value="all">Tất cả</option>
-            {Object.entries(deviceTypes).map(([key, device]) => (
-              <option key={key} value={key}>
-                {device.label} 
+            {devices.map((device) => (
+              <option key={device.id} value={device.id}>
+                {device.name}
               </option>
             ))}
           </select>
@@ -291,32 +270,28 @@ function ActiveHistory() {
             </thead>
 
             <tbody>
-              {pageData.map((item) => {
-                const device = deviceTypes[item.device];
+              {rows.map((item) => (
+                <tr key={item.id}>
+                  <td className="history-id-cell">{item.id}</td>
+                  <td className="history-device-cell">
+                    <strong>{item.deviceName}</strong>
+                    <small>{item.location}</small>
+                  </td>
+                  <td className="history-actor-cell">{item.actor}</td>
+                  <td className={`history-simple-cell ${item.action === "Bật" ? "status-on" : "status-off"}`}>
+                    {item.action}
+                  </td>
+                  <td className={`history-simple-cell ${item.status === "SUCCESS" ? "status-on" : "status-off"}`}>
+                    {statusLabels[item.status] ?? item.status}
+                  </td>
+                  <td className="history-time-cell">{formatDateTime(item)}</td>
+                </tr>
+              ))}
 
-                return (
-                  <tr key={item.id}>
-                    <td className="history-id-cell">{item.id}</td>
-                    <td className="history-device-cell">
-                      <strong>{device.label}</strong>
-                      <small>{device.location}</small>
-                    </td>
-                    <td className="history-actor-cell">{item.actor}</td>
-                    <td className={`history-simple-cell ${item.action === 'Bật' ? 'status-on' : item.action === 'Tắt' ? 'status-off' : ''}`}>
-                      {actionLabels[item.action]}
-                    </td>
-                    <td className={`history-simple-cell ${item.status === 'Bật' ? 'status-on' : item.status === 'Tắt' ? 'status-off' : ''}`}>
-                      {statusLabels[item.status]}
-                    </td>
-                    <td className="history-time-cell">{formatDateTime(item)}</td>
-                  </tr>
-                );
-              })}
-
-              {pageData.length === 0 && (
+              {rows.length === 0 && (
                 <tr>
                   <td colSpan="6" className="history-empty">
-                    Không tìm thấy lịch sử hoạt động phù hợp.
+                    {error || (loading ? "Đang tải..." : "Không tìm thấy lịch sử hoạt động phù hợp.")}
                   </td>
                 </tr>
               )}
@@ -328,10 +303,10 @@ function ActiveHistory() {
           <div className="history-footer-left">
             <span className="history-result-count">
               Hiển thị{" "}
-              {filteredData.length === 0 ? 0 : (safePage - 1) * pageSize + 1}
+              {total === 0 ? 0 : (safePage - 1) * pageSize + 1}
               –
-              {Math.min(safePage * pageSize, filteredData.length)} /{" "}
-              {filteredData.length}
+              {Math.min(safePage * pageSize, total)} /{" "}
+              {total}
             </span>
 
             <div className="history-page-size">

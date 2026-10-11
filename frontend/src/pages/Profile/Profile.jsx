@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Camera,
   Code2,
@@ -12,40 +12,48 @@ import {
   UserRound,
   X,
 } from "lucide-react";
+import {
+  fetchProfile,
+  updateProfile,
+  uploadAvatar,
+  deleteAvatar,
+} from "../../services/profileService";
 import "./Profile.css";
 
-const initialProfile = {
-  name: "Trần Đức Quân",
-  studentId: "B23DCCN684",
-  email: "quantd0609@gmail.com",
-  phone: "+84 967365261",
-  course: "Lập trình IoT",
-  className: "INT14149-10",
-  github: "https://github.com/quantd2708/IOT_2026.git",
-  figma: "https://www.figma.com/design/6EIHxlaO1ReU1NqOSV8B4N/Untitled?node-id=0-1&p=f&t=m455dsSJvbZILY6j-0",
-  postman: "https://www.postman.com/",
-  cv: "https://drive.google.com/",
-};
-
-const getSavedProfile = () => {
-  const saved = localStorage.getItem("profileData");
-  return saved ? JSON.parse(saved) : initialProfile;
-};
-
-const getSavedAvatar = () => {
-  return localStorage.getItem("profileAvatar") || "";
+const emptyProfile = {
+  name: "", studentId: "", email: "", phone: "", course: "", className: "",
+  github: "", figma: "", postman: "", cv: "", avatar: "",
 };
 
 function Profile() {
-  const [profile, setProfile] = useState(getSavedProfile);
-  const [formData, setFormData] = useState(getSavedProfile);
+  const [profile, setProfile] = useState(emptyProfile);
+  const [formData, setFormData] = useState(emptyProfile);
   const [isEditing, setIsEditing] = useState(false);
-  
-  const [avatar, setAvatar] = useState(getSavedAvatar);
-  const [savedAvatar, setSavedAvatar] = useState(getSavedAvatar);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const [avatar, setAvatar] = useState("");
+  const [savedAvatar, setSavedAvatar] = useState("");
   const [avatarFile, setAvatarFile] = useState(null);
   
   const fileInputRef = useRef(null);
+
+  const applyProfile = (p) => {
+    setProfile(p);
+    setFormData(p);
+    setAvatar(p.avatar);
+    setSavedAvatar(p.avatar);
+    setAvatarFile(null);
+  };
+
+  useEffect(() => {
+    fetchProfile()
+      .then(applyProfile)
+      // .catch(() => setError("Không kết nối được server"))
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const updateField = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -57,25 +65,34 @@ function Profile() {
     setIsEditing(true);
   };
 
-  const cancelEditing = () => {
-    setFormData(profile);
-    setAvatar(savedAvatar);
-    setAvatarFile(null);
-    setIsEditing(false);
-  };
+    const cancelEditing = () => {
+      setFormData(profile);
+      setAvatar(savedAvatar);
+      setAvatarFile(null);
+      setError("");          // thêm dòng này
+      setIsEditing(false);
+    };
 
-  const saveProfile = (event) => {
+  const saveProfile = async (event) => {
     event.preventDefault();
-    setProfile(formData);
-    setSavedAvatar(avatar);
-    setIsEditing(false);
-    setAvatarFile(null);
+    setSaving(true);
+    setError("");
 
-    localStorage.setItem("profileData", JSON.stringify(formData));
-    if (avatar) {
-      localStorage.setItem("profileAvatar", avatar);
-    } else {
-      localStorage.removeItem("profileAvatar");
+    try {
+      let updated = await updateProfile(formData);
+
+      if (avatarFile) {
+        updated = await uploadAvatar(avatarFile);
+      } else if (!avatar && savedAvatar) {
+        updated = await deleteAvatar(); // người dùng đã bấm "Xóa ảnh"
+      }
+
+      applyProfile(updated);
+      setIsEditing(false);
+    } catch (err) {
+      setError(err.response?.data?.message || "Không lưu được, vui lòng thử lại");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -85,6 +102,10 @@ function Profile() {
 
     if (!file.type.startsWith("image/")) {
       alert("Vui lòng chọn tệp hình ảnh.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Ảnh tối đa 2MB.");
       return;
     }
 
@@ -141,10 +162,19 @@ function Profile() {
     );
   };
 
+  if (loading) {
+    return (
+      <main className="profile-page">
+        <p style={{ padding: 24 }}>Đang tải...</p>
+      </main>
+    );
+  }
+
   return (
     <main className="profile-page">
       <section className="profile-container">
         <form id="profile-form" onSubmit={saveProfile} className="profile-grid">
+          {error && <p style={{ color: "#dc2626", fontSize: 13 }}>{error}</p>}
           
           <div className="profile-left">
             <section className="profile-card profile-identity-card">
@@ -176,6 +206,7 @@ function Profile() {
                       className="profile-icon-button profile-save-trigger"
                       title="Lưu thay đổi"
                       aria-label="Lưu thay đổi"
+                      disabled={saving}
                     >
                       <Save size={14} />
                     </button>

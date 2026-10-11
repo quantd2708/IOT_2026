@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Search, Filter, RotateCcw } from "lucide-react";
+import { fetchSensorReadings } from "../../services/sensorService";
 import "./DataSensor.css";
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -10,39 +11,6 @@ const SENSOR_TYPES = {
   humidity: { label: "Độ ẩm", unit: "%" },
   light: { label: "Độ sáng", unit: "lux" },
 };
-
-const SAMPLE_VALUES = [
-  ["humidity", 68.3, "09:20:15"],
-  ["light", 544, "09:03:42"],
-  ["temperature", 22.9, "08:46:18"],
-  ["temperature", 23.3, "08:29:35"],
-  ["light", 352, "08:12:27"],
-  ["temperature", 25.4, "07:55:11"],
-  ["temperature", 30.2, "07:38:54"],
-  ["humidity", 61.5, "07:21:36"],
-  ["humidity", 71.5, "07:04:22"],
-  ["light", 464, "06:47:09"],
-  ["temperature", 27.5, "06:30:48"],
-  ["humidity", 65.2, "06:13:31"],
-  ["light", 420, "05:56:16"],
-  ["temperature", 26.8, "05:39:04"],
-  ["humidity", 70.1, "05:22:43"],
-  ["light", 380, "05:05:28"],
-];
-
-const SAMPLE_DATA = Array.from({ length: 46 }, (_, index) => {
-  const [sensor, value, time] = SAMPLE_VALUES[index % SAMPLE_VALUES.length];
-  const day = index < 10 ? 15 : 14;
-  const id = 142 - index;
-
-  return {
-    id: `SD-${id}`,
-    sensor,
-    value,
-    time,
-    date: `2026-08-${String(day).padStart(2, "0")}`,
-  };
-});
 
 function getPaginationRange(currentPage, totalPages) {
   const range = [];
@@ -95,89 +63,44 @@ function DataSensor() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [sortOrder, setSortOrder] = useState("desc");
 
-  const filteredData = useMemo(() => {
-    const keyword = appliedFilters.search.trim().toLowerCase();
+    const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-    const result = SAMPLE_DATA.filter((item) => {
-      const sensor = SENSOR_TYPES[item.sensor];
+  useEffect(() => {
+    let ignore = false;
 
-      if (["temperature", "humidity", "light"].includes(appliedFilters.mode)) {
-        if (item.sensor !== appliedFilters.mode) {
-          return false;
-        }
-
-        if (!keyword) {
-          return true;
-        }
-
-        const searchableText = [
-          item.id,
-          sensor.label,
-          item.value,
-          sensor.unit,
-          item.time,
-          item.date,
-          formatDate(item.date),
-          formatDateTime(item),
-        ]
-          .join(" ")
-          .toLowerCase();
-
-        return searchableText.includes(keyword);
+    async function load() {
+      setLoading(true);
+      try {
+        const res = await fetchSensorReadings({
+          mode: appliedFilters.mode,
+          search: appliedFilters.search,
+          sort: sortOrder,
+          page: currentPage,
+          pageSize,
+        });
+        if (ignore) return;
+        setRows(res.data);
+        setTotal(res.total);
+        setTotalPages(res.totalPages);
+        setError("");
+      } catch {
+        if (!ignore) setError("Không kết nối được server");
+      } finally {
+        if (!ignore) setLoading(false);
       }
+    }
 
-      if (appliedFilters.mode === "time") {
-        if (!keyword) {
-          return true;
-        }
+    load();
+    return () => {
+      ignore = true;
+    };
+  }, [appliedFilters, sortOrder, currentPage, pageSize]);
 
-        const timeSearchText = [
-          item.time,
-          item.date,
-          formatDate(item.date),
-          formatDateTime(item),
-        ]
-          .join(" ")
-          .toLowerCase();
-
-        return timeSearchText.includes(keyword);
-      }
-
-      if (!keyword) {
-        return true;
-      }
-
-      const searchableText = [
-        item.id,
-        sensor.label,
-        item.value,
-        sensor.unit,
-        item.time,
-        item.date,
-        formatDate(item.date),
-        formatDateTime(item),
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      return searchableText.includes(keyword);
-    });
-
-    return result.sort((a, b) => {
-      const timeA = new Date(`${a.date}T${a.time}`).getTime();
-      const timeB = new Date(`${b.date}T${b.time}`).getTime();
-
-      return sortOrder === "desc" ? timeB - timeA : timeA - timeB;
-    });
-  }, [appliedFilters, sortOrder]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredData.length / pageSize));
-  const safePage = Math.min(currentPage, totalPages);
-
-  const pageData = filteredData.slice(
-    (safePage - 1) * pageSize,
-    safePage * pageSize
-  );
+  const safePage = Math.min(currentPage, totalPages); 
 
   const applyFilters = () => {
     setAppliedFilters({
@@ -292,8 +215,8 @@ function DataSensor() {
             </thead>
 
             <tbody>
-              {pageData.map((item) => {
-                const sensor = SENSOR_TYPES[item.sensor];
+              {rows.map((item) => {
+                const sensor = SENSOR_TYPES[item.sensor] ?? { label: item.sensor, unit: "" };
 
                 return (
                   <tr key={item.id}>
@@ -310,10 +233,10 @@ function DataSensor() {
                 );
               })}
 
-              {pageData.length === 0 && (
+              {rows.length === 0 && (
                 <tr>
                   <td colSpan="4" className="sensor-empty">
-                    Không tìm thấy dữ liệu phù hợp.
+                    {error || (loading ? "Đang tải..." : "Không tìm thấy dữ liệu phù hợp.")}
                   </td>
                 </tr>
               )}
@@ -325,9 +248,9 @@ function DataSensor() {
           <div className="sensor-footer-left">
             <span className="sensor-result-count">
               Hiển thị{" "}
-              {filteredData.length === 0 ? 0 : (safePage - 1) * pageSize + 1}{" "}
-              – {Math.min(safePage * pageSize, filteredData.length)} /{" "}
-              {filteredData.length}
+              {total === 0 ? 0 : (safePage - 1) * pageSize + 1}{" "}
+              – {Math.min(safePage * pageSize, total)} /{" "}
+              {total}
             </span>
 
             <div className="sensor-page-size">

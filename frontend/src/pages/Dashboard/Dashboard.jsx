@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -9,93 +9,138 @@ import {
   Tooltip,
 } from "recharts";
 import { Thermometer, Droplets, Sun, Lightbulb, RefreshCw } from "lucide-react";
+import { fetchLatestSensors } from "../../services/sensorService";
+import { fetchDevices, toggleDeviceApi } from "../../services/deviceService";
 import "./Dashboard.css";
 
-const TEMP_MIN = 15;
-const TEMP_MAX = 40;
 const CHART_POINTS = 20;
-const UPDATE_INTERVAL_MS = 5000;
-const REFRESH_DELAY_MS = 800;
+const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:5000/ws";
+const RECONNECT_MS = 3000;
 const TIME_FORMAT_LOCALE = "vi-VN";
 const TIME_FORMAT_OPTS = { hour12: false };
-
-const INITIAL_DEVICES = [
-  { id: "light1", name: "Đèn 1", location: "Phòng khách", type: "light", on: true },
-  { id: "light2", name: "Đèn 2", location: "Phòng ngủ", type: "light", on: false },
-  { id: "light3", name: "Đèn 3", location: "Ban công", type: "light", on: false },
-];
-
-const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const LIGHT_DIVISOR = 40; // hệ số chia chỉ dùng để vẽ biểu đồ
 
 const formatTime = (date) => date.toLocaleTimeString(TIME_FORMAT_LOCALE, TIME_FORMAT_OPTS);
 
-function generateInitialChartData() {
-  const now = new Date();
-  const data = [];
+const round = (v, digits = 1) => (typeof v === "number" ? +v.toFixed(digits) : v);
 
-  for (let i = CHART_POINTS - 1; i >= 0; i--) {
-    const timePoint = new Date(now.getTime() - i * UPDATE_INTERVAL_MS);
-    data.push({
-      time: formatTime(timePoint),
-      temperature: +(26 + Math.random() * 2).toFixed(1),
-      humidity: Math.floor(55 + Math.random() * 10),
-      light: Math.floor(10 + Math.random() * 50),
-    });
-  }
-  return data;
-}
+const toPoint = (r) => ({
+  time: formatTime(new Date(r.timestamp)),
+  temperature: round(r.temperature, 1),
+  humidity: round(r.humidity, 1),
+  light: round(r.light, 0),
+  lightChart: typeof r.light === "number" ? round(r.light / LIGHT_DIVISOR, 1) : null,
+});
 
-function generateNextPoint(lastPoint) {
-  return {
-    time: formatTime(new Date()),
-    temperature: +clamp(
-      lastPoint.temperature + (Math.random() * 0.4 - 0.2),
-      TEMP_MIN,
-      TEMP_MAX
-    ).toFixed(1),
-    humidity: clamp(Math.floor(lastPoint.humidity + (Math.random() * 4 - 2)), 0, 100),
-    light: Math.max(0, Math.floor(lastPoint.light + (Math.random() * 10 - 5))),
-  };
-}
+const toDevice = (d) => ({
+  id: d.id,
+  name: d.name,
+  location: d.location,
+  on: d.status === "ON",
+});
 
 function Dashboard() {
-  const [chartData, setChartData] = useState(generateInitialChartData);
-  const [devices, setDevices] = useState(INITIAL_DEVICES);
+  const [chartData, setChartData] = useState([]);
+  const [devices, setDevices] = useState([]);
+  const [busyIds, setBusyIds] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [connected, setConnected] = useState(false);
+  const [error, setError] = useState("");
 
   const sensors = useMemo(() => {
     const last = chartData[chartData.length - 1];
     return {
-      temperature: last.temperature,
-      humidity: last.humidity,
-      light: last.light,
+      temperature: last?.temperature ?? "--",
+      humidity: last?.humidity ?? "--",
+      light: last?.light ?? "--",
     };
   }, [chartData]);
 
-  useEffect(() => {
-    const sensorInterval = setInterval(() => {
-      setChartData((prevData) => {
-        const lastPoint = prevData[prevData.length - 1];
-        const newPoint = generateNextPoint(lastPoint);
-        return [...prevData.slice(1), newPoint];
-      });
-    }, UPDATE_INTERVAL_MS);
-
-    return () => clearInterval(sensorInterval);
+  // Tải dữ liệu ban đầu qua REST
+  const loadInitial = useCallback(async () => {
+    try {
+      const [rows, deviceList] = await Promise.all([
+        fetchLatestSensors(CHART_POINTS),
+        fetchDevices(),
+      ]);
+      setChartData(rows.map(toPoint));
+      setDevices(deviceList.filter((d) => d.mqttKey).map(toDevice));
+      setError("");
+    } catch {
+      setError("Không kết nối được server");
+    }
   }, []);
 
-  const fetchDashboard = () => {
+  useEffect(() => {
+    loadInitial();
+  }, [loadInitial]);
+
+  // Nhận dữ liệu realtime qua WebSocket
+  useEffect(() => {
+    let ws;
+    let timer;
+    let closed = false;
+
+    const connect = () => {
+      ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => {
+        setConnected(true);
+        loadInitial(); // nối lại sau khi mất mạng thì tải bù dữ liệu bị hụt
+      };
+
+      ws.onclose = () => {
+        setConnected(false);
+        if (!closed) timer = setTimeout(connect, RECONNECT_MS);
+      };
+
+      ws.onmessage = (event) => {
+        let msg;
+        try {
+          msg = JSON.parse(event.data);
+        } catch {
+          return;
+        }
+
+        if (msg.type === "sensor") {
+          setChartData((prev) => [...prev, toPoint(msg.data)].slice(-CHART_POINTS));
+        } else if (msg.type === "device") {
+          setDevices((prev) =>
+            prev.map((d) => (d.id === msg.data.id ? { ...d, on: msg.data.on } : d))
+          );
+        }
+      };
+    };
+
+    connect();
+
+    return () => {
+      closed = true;
+      clearTimeout(timer);
+      ws?.close();
+    };
+  }, [loadInitial]);
+
+  const fetchDashboard = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setChartData(generateInitialChartData());
-      setLoading(false);
-    }, REFRESH_DELAY_MS);
+    await loadInitial();
+    setLoading(false);
   };
 
-  const toggleDevice = (device) => {
-    setDevices((prev) =>
-      prev.map((item) => (item.id === device.id ? { ...item, on: !item.on } : item))
-    );
+  const toggleDevice = async (device) => {
+    setBusyIds((prev) => [...prev, device.id]);
+    setError("");
+
+    try {
+      await toggleDeviceApi(device.id, !device.on);
+      setDevices((prev) =>
+        prev.map((d) => (d.id === device.id ? { ...d, on: !device.on } : d))
+      );
+    } catch (err) {
+      setError(err.response?.data?.message || "Không gửi được lệnh");
+    } finally {
+      setBusyIds((prev) => prev.filter((id) => id !== device.id));
+    }
   };
 
   const sensorCards = [
@@ -106,6 +151,12 @@ function Dashboard() {
 
   return (
     <main className="home-dashboard">
+      {!connected && (
+        <p style={{ color: "#d97706", fontSize: 13 }}>
+          Mất kết nối realtime, đang thử kết nối lại...
+        </p>
+      )}
+      {error && <p style={{ color: "#dc2626", fontSize: 13 }}>{error}</p>}
       <section className="home-dashboard-sensors">
         {sensorCards.map(({ label, value, unit, icon: Icon, color }) => (
           <article className={`home-sensor-card ${color}`} key={label}>
@@ -135,7 +186,7 @@ function Dashboard() {
                 <i /> Độ ẩm (%)
               </span>
               <span className="legend-light">
-                <i /> Độ sáng (lux)
+                <i /> Độ sáng (lux) (÷{LIGHT_DIVISOR})
               </span>
             </div>
           </div>
@@ -163,6 +214,9 @@ function Dashboard() {
                 />
 
                 <Tooltip
+                  formatter={(value, name, item) =>
+                    name === "Độ sáng" ? [item.payload.light, name] : [value, name]
+                  }
                   contentStyle={{
                     background: "#ffffff",
                     border: "1px solid #dfe7ef",
@@ -177,6 +231,7 @@ function Dashboard() {
                   isAnimationActive={false}
                   type="monotone"
                   dataKey="temperature"
+                  name="Nhiệt độ"
                   stroke="#ff795f"
                   strokeWidth={1.8}
                   dot={false}
@@ -187,6 +242,7 @@ function Dashboard() {
                   isAnimationActive={false}
                   type="monotone"
                   dataKey="humidity"
+                  name="Độ ẩm"
                   stroke="#42c8e9"
                   strokeWidth={1.8}
                   dot={false}
@@ -196,7 +252,8 @@ function Dashboard() {
                 <Line
                   isAnimationActive={false}
                   type="monotone"
-                  dataKey="light"
+                  dataKey="lightChart"
+                  name="Độ sáng"
                   stroke="#e9bd32"
                   strokeWidth={1.8}
                   strokeDasharray="4 4"
@@ -217,30 +274,35 @@ function Dashboard() {
           </div>
 
           <div className="home-device-list">
-            {devices.map((device) => (
-              <div className="home-device-row" key={device.id}>
-                <div className={`home-device-icon ${device.on ? "is-on" : ""}`}>
-                  <Lightbulb size={15} />
-                </div>
+            {devices.map((device) => {
+              const busy = busyIds.includes(device.id);
 
-                <div className="home-device-details">
-                  <strong>{device.name}</strong>
-                  <span>{device.location} · </span>
-                  <small className={device.on ? "is-on" : ""}>
-                    {device.on ? "Bật" : "Tắt"}
-                  </small>
-                </div>
+              return (
+                <div className="home-device-row" key={device.id}>
+                  <div className={`home-device-icon ${device.on ? "is-on" : ""}`}>
+                    <Lightbulb size={15} />
+                  </div>
 
-                <button
-                  className={`home-device-switch ${device.on ? "is-on" : ""}`}
-                  onClick={() => toggleDevice(device)}
-                  aria-label={`Điều khiển ${device.name}`}
-                  aria-pressed={device.on}
-                >
-                  <span />
-                </button>
-              </div>
-            ))}
+                  <div className="home-device-details">
+                    <strong>{device.name}</strong>
+                    <span>{device.location} · </span>
+                    <small className={device.on ? "is-on" : ""}>
+                      {busy ? "Đang chờ..." : device.on ? "Bật" : "Tắt"}
+                    </small>
+                  </div>
+
+                  <button
+                    className={`home-device-switch ${device.on ? "is-on" : ""}`}
+                    onClick={() => toggleDevice(device)}
+                    disabled={busy}
+                    aria-label={`Điều khiển ${device.name}`}
+                    aria-pressed={device.on}
+                  >
+                    <span />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </aside>
       </section>
