@@ -426,3 +426,7 @@
   color: #dc2626; 
   font-weight: 700;
 }
+.history-simple-cell.status-pending {
+  color: #d97706;
+  font-weight: 600;
+}

@@ -15,8 +15,9 @@ const actionLabels = {
 
 const statusLabels = {
   all: "Tất cả",
-  SUCCESS: "Success",
-  FAILED: "Failed",
+  SUCCESS: "Thành công",
+  FAILED: "Thất bại",
+  PENDING: "Đang chờ...",
 };
 
 
@@ -281,7 +282,10 @@ function ActiveHistory() {
                   <td className={`history-simple-cell ${item.action === "Bật" ? "status-on" : "status-off"}`}>
                     {item.action}
                   </td>
-                  <td className={`history-simple-cell ${item.status === "SUCCESS" ? "status-on" : "status-off"}`}>
+                  <td className={`history-simple-cell ${
+                    item.status === "SUCCESS" ? "status-on" : 
+                    item.status === "FAILED" ? "status-off" : "status-pending"
+                  }`}>
                     {statusLabels[item.status] ?? item.status}
                   </td>
                   <td className="history-time-cell">{formatDateTime(item)}</td>

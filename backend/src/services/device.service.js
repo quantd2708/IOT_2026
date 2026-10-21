@@ -32,9 +32,18 @@ export async function setDeviceStatus(id, status) {
 }
 
 export async function logAction({ deviceId, userId, action, status, triggeredBy, at }) {
-  await pool.query(
+  const [result] = await pool.query(
     `INSERT INTO action_logs (device_id, user_id, action, status, triggered_by, timestamp)
      VALUES (?, ?, ?, ?, ?, ?)`,
     [deviceId, userId, action, status, triggeredBy, at]
   );
+  return result; 
+}
+
+export async function updateLogStatus(logId, status) {
+  const [result] = await pool.query(
+    `UPDATE action_logs SET status = ? WHERE id = ?`,
+    [status, logId]
+  );
+  return result;
 }

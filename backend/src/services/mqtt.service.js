@@ -12,7 +12,6 @@ export const ACK_TIMEOUT_MS = 3000;
 
 let client = null;
 
-// Các lệnh đang chờ ESP32 trả lời: mqttKey -> { expected, timer, resolve }
 const pending = new Map();
 
 export function initMqtt() {
@@ -22,7 +21,6 @@ export function initMqtt() {
     reconnectPeriod: 3000,
   });
 
-  // Đăng ký topic trong "connect" để sau khi mất mạng nối lại vẫn đăng ký lại
   client.on("connect", () => {
     console.log("Đã kết nối MQTT broker:", process.env.MQTT_URL);
     client.subscribe([SENSOR_TOPIC, `${STATUS_PREFIX}+`], (err) => {
@@ -44,7 +42,7 @@ export function initMqtt() {
   });
 }
 
-// ---------- Nhận dữ liệu cảm biến ----------
+
 async function handleSensor(text) {
   let json;
   try {
@@ -64,7 +62,6 @@ async function handleSensor(text) {
   const ts = new Date();
   ts.setMilliseconds(0);
 
-  // Đẩy lên màn hình trước, không chờ ghi DB
   broadcast({ type: "sensor", data: { timestamp: ts.toISOString(), ...reading } });
 
   try {
@@ -74,11 +71,10 @@ async function handleSensor(text) {
   }
 }
 
-// ---------- Nhận phản hồi trạng thái đèn ----------
+
 async function handleStatus(key, text) {
   if (text !== "ON" && text !== "OFF") return;
 
-  // Có lệnh đang chờ và đúng trạng thái mong đợi -> báo thành công
   const waiting = pending.get(key);
   if (waiting && waiting.expected === text) {
     clearTimeout(waiting.timer);
@@ -86,7 +82,6 @@ async function handleStatus(key, text) {
     waiting.resolve({ ok: true });
   }
 
-  // Dù có ai chờ hay không, vẫn đồng bộ trạng thái thật vào DB và các màn hình
   try {
     const device = await getDeviceByMqttKey(key);
     if (!device) return;
@@ -99,7 +94,6 @@ async function handleStatus(key, text) {
 }
 
 // ---------- Gửi lệnh và chờ phản hồi ----------
-// Trả về { ok: true } hoặc { ok: false, reason: "busy" | "offline" | "timeout" }
 export function sendCommand(key, on) {
   return new Promise((resolve) => {
     if (!client || !client.connected) return resolve({ ok: false, reason: "offline" });

@@ -2,7 +2,7 @@ import api from "./api";
 
 export async function fetchDevices() {
   const { data } = await api.get("/devices");
-  return data.data; // [{ id, name, location, type, status }]
+  return data.data; 
 }
 
 export async function toggleDeviceApi(id, on) {

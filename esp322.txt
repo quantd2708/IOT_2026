@@ -1,0 +1,173 @@
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <DHT.h>
+
+#define DHTPIN 4
+#define DHTTYPE DHT11
+#define LIGHT_PIN 34
+
+#define LED1_PIN 13
+#define LED2_PIN 12
+#define LED3_PIN 14
+
+const char* ssid = "q";         
+const char* password = "244466666"; 
+const char* mqtt_server = "172.20.10.4"; 
+const char* mqtt_user = "admin";
+const char* mqtt_pass = "123456";
+
+// 1. Topic gửi dữ liệu cảm biến
+const char* topic_sensor_data = "b23dccn684/esp32/sensor/data";
+
+// 2. Topic nhận lệnh điều khiển (Command)
+const char* topic_cmd_led1 = "b23dccn684/esp32/device/command/led1"; 
+const char* topic_cmd_led2 = "b23dccn684/esp32/device/command/led2"; 
+const char* topic_cmd_led3 = "b23dccn684/esp32/device/command/led3"; 
+
+// 3. Topic gửi phản hồi trạng thái (Status)
+const char* topic_status_led1 = "b23dccn684/esp32/device/status/led1"; 
+const char* topic_status_led2 = "b23dccn684/esp32/device/status/led2"; 
+const char* topic_status_led3 = "b23dccn684/esp32/device/status/led3"; 
+const char* topic_cmd_all = "b23dccn684/esp32/device/command/all";
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+DHT dht(DHTPIN, DHTTYPE);
+
+void callback(char* topic, byte* payload, unsigned int length) {
+  String message = "";
+  for (int i = 0; i < length; i++) {
+    message += (char)payload[i];
+  }
+  
+  Serial.print("Nhận lệnh từ topic [");
+  Serial.print(topic);
+  Serial.print("]: ");
+  Serial.println(message);
+
+  if (String(topic) == topic_cmd_led1) {
+    if (message == "ON") {
+      digitalWrite(LED1_PIN, HIGH);
+      client.publish(topic_status_led1, "ON");
+    } else if (message == "OFF") {
+      digitalWrite(LED1_PIN, LOW);
+      client.publish(topic_status_led1, "OFF");
+    }
+  }
+  else if (String(topic) == topic_cmd_led2) {
+    if (message == "ON") {
+      digitalWrite(LED2_PIN, HIGH);
+      client.publish(topic_status_led2, "ON");
+    } else if (message == "OFF") {
+      digitalWrite(LED2_PIN, LOW);
+      client.publish(topic_status_led2, "OFF");
+    }
+  } 
+  else if (String(topic) == topic_cmd_led3) {
+    if (message == "ON") {
+      digitalWrite(LED3_PIN, HIGH);
+      client.publish(topic_status_led3, "ON");
+    } else if (message == "OFF") {
+      digitalWrite(LED3_PIN, LOW);
+      client.publish(topic_status_led3, "OFF");
+    }
+  }
+  else if (String(topic) == topic_cmd_all) {
+    if (message == "ON") {
+      digitalWrite(LED1_PIN, HIGH);
+      digitalWrite(LED2_PIN, HIGH);
+      digitalWrite(LED3_PIN, HIGH);
+      // Gửi báo cáo đồng loạt
+      client.publish(topic_status_led1, "ON");
+      client.publish(topic_status_led2, "ON");
+      client.publish(topic_status_led3, "ON");
+    } else if (message == "OFF") {
+      digitalWrite(LED1_PIN, LOW);
+      digitalWrite(LED2_PIN, LOW);
+      digitalWrite(LED3_PIN, LOW);
+      client.publish(topic_status_led1, "OFF");
+      client.publish(topic_status_led2, "OFF");
+      client.publish(topic_status_led3, "OFF");
+    }
+  }
+}
+
+void setup_wifi() {
+  delay(10);
+  Serial.println();
+  Serial.print("Đang kết nối WiFi: ");
+  Serial.println(ssid);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nWiFi đã kết nối. IP: ");
+  Serial.println(WiFi.localIP());
+}
+
+void reconnect() {
+  while (!client.connected()) {
+    Serial.print("Đang kết nối MQTT Broker...");
+    String clientId = "ESP32Client-" + String(random(0xffff), HEX);
+    
+    if (client.connect(clientId.c_str(), mqtt_user, mqtt_pass)) {
+      Serial.println("Đã kết nối!");
+      
+      client.subscribe(topic_cmd_led1);
+      client.subscribe(topic_cmd_led2);
+      client.subscribe(topic_cmd_led3);
+      client.subscribe(topic_cmd_all);
+      
+    } else {
+      Serial.print("Thất bại, rc=");
+      Serial.print(client.state());
+      Serial.println(" Thử lại sau 5 giây");
+      delay(5000);
+    }
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  
+  pinMode(LED1_PIN, OUTPUT);
+  pinMode(LED2_PIN, OUTPUT);
+  pinMode(LED3_PIN, OUTPUT);
+  
+  digitalWrite(LED1_PIN, LOW);
+  digitalWrite(LED2_PIN, LOW);
+  digitalWrite(LED3_PIN, LOW);
+
+  pinMode(LIGHT_PIN, INPUT);
+  dht.begin();
+  
+  setup_wifi();
+  client.setServer(mqtt_server, 1884);
+  client.setCallback(callback); 
+}
+
+unsigned long lastMsg = 0;
+
+void loop() {
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop(); 
+
+  unsigned long now = millis();
+  if (now - lastMsg > 5000) {
+    lastMsg = now;
+    
+    float t = dht.readTemperature();
+    float h = dht.readHumidity();
+    int light = analogRead(LIGHT_PIN);
+    
+    if (!isnan(t) && !isnan(h)) {
+      String payload = "{\"temp\":" + String(t) + ",\"hum\":" + String(h) + ",\"light\":" + String(light) + "}";
+      client.publish(topic_sensor_data, payload.c_str());
+      Serial.print("Đã gửi dữ liệu: ");
+      Serial.println(payload);
+    }
+  }
+}

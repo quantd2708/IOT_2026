@@ -16,7 +16,6 @@ const EXT = {
 const upload = multer({
   storage: multer.diskStorage({
     destination: AVATAR_DIR,
-    // Tự đặt tên file, không dùng tên do người dùng gửi lên
     filename: (req, file, cb) =>
       cb(null, `avatar-${Date.now()}-${Math.round(Math.random() * 1e6)}${EXT[file.mimetype]}`),
   }),
@@ -27,7 +26,6 @@ const upload = multer({
   },
 }).single("avatar");
 
-// Bọc lại để lỗi upload trả về JSON 400 thay vì lỗi 500
 export function avatarUpload(req, res, next) {
   upload(req, res, (err) => {
     if (!err) return next();

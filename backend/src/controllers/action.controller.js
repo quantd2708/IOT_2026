@@ -1,7 +1,7 @@
 import { listActions } from "../services/action.service.js";
 
 const ACTIONS = ["all", "Bật", "Tắt"];
-const STATUSES = ["all", "SUCCESS", "FAILED"];
+const STATUSES = ["all", "SUCCESS", "FAILED", "PENDING"];
 
 export async function list(req, res) {
   const device = String(req.query.device ?? "all").slice(0, 50) || "all";

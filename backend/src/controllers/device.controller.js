@@ -1,4 +1,4 @@
-import { listDevices, getDeviceById, logAction } from "../services/device.service.js";
+import { listDevices, getDeviceById, logAction, updateLogStatus } from "../services/device.service.js";
 import { sendCommand } from "../services/mqtt.service.js";
 
 export async function list(req, res) {
@@ -17,25 +17,31 @@ export async function toggle(req, res) {
     return res.status(400).json({ message: "Thiết bị này không điều khiển được" });
   }
 
-  const requestedAt = new Date(); // ghi nhận thời điểm bấm, không phải lúc có kết quả
-  const result = await sendCommand(device.mqttKey, on);
-
-  // Lệnh trước chưa xong: không gửi lệnh mới, cũng không ghi log
-  if (result.reason === "busy") {
-    return res.status(409).json({ message: "Thiết bị đang xử lý lệnh trước đó" });
-  }
+  const requestedAt = new Date();
+  let currentLogId = null;
 
   try {
-    await logAction({
+    const logResult = await logAction({
       deviceId: device.id,
       userId: Number(process.env.CURRENT_USER_ID) || null,
       action: on ? "TURN_ON" : "TURN_OFF",
-      status: result.ok ? "SUCCESS" : "FAILED",
+      status: "PENDING",
       triggeredBy: "USER",
       at: requestedAt,
     });
+    currentLogId = logResult?.insertId || logResult?.id; 
   } catch (err) {
-    console.error("Không ghi được action_logs:", err.message);
+    console.error("Không ghi được action_logs (PENDING):", err.message);
+  }
+  const result = await sendCommand(device.mqttKey, on);
+
+  const finalStatus = result.ok ? "SUCCESS" : "FAILED";
+  try {
+    if (currentLogId) {
+      await updateLogStatus(currentLogId, finalStatus);
+    }
+  } catch (err) {
+    console.error("Không cập nhật được action_logs:", err.message);
   }
 
   if (result.ok) {

@@ -135,10 +135,21 @@
   white-space: nowrap;
 }
 
-.home-chart-legend span {
+.home-chart-legend span.legend-item {
   display: flex;
   align-items: center;
   gap: 5px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  user-select: none;
+}
+
+.home-chart-legend span.legend-item:hover {
+  opacity: 0.8;
+}
+
+.home-chart-legend span.legend-item.is-hidden {
+  opacity: 0.4;
 }
 
 .home-chart-legend i {
@@ -256,6 +267,10 @@
 
 .home-device-details small.is-on {
   color: #16a34a;
+}
+.home-device-details small.is-busy {
+  color: #d97706;
+  font-weight: 600;
 }
 
 .home-device-switch {

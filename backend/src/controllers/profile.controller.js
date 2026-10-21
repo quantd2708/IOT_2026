@@ -27,7 +27,6 @@ function isHttpUrl(value) {
   }
 }
 
-// Chỉ nhận các trường nằm trong RULES, kiểm tra từng trường nếu client có gửi lên
 function validate(body) {
   const data = {};
 
@@ -48,7 +47,6 @@ function validate(body) {
   return { data };
 }
 
-// Đổi dòng DB sang đúng dạng mà Profile.jsx đang dùng
 function toDto(u, req) {
   const base = `${req.protocol}://${req.get("host")}`;
   const avatar = !u.avatar_url

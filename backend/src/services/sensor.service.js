@@ -30,7 +30,6 @@ const LABEL_SQL = `CASE s.type
   WHEN 'light' THEN 'Độ sáng'
   ELSE s.type END`;
 
-// Chặn ký tự % và _ do người dùng nhập làm hỏng câu LIKE
 const escapeLike = (s) => s.replace(/[\\%_]/g, "\\$&");
 
 export async function listReadings({ mode, search, sort, page, pageSize }) {
@@ -47,11 +46,10 @@ export async function listReadings({ mode, search, sort, page, pageSize }) {
     const op = keyword.match(OPERATOR_RE);
 
     if (op && mode !== "time") {
-      // VD: ">30" -> sd.value > 30 (op[1] đã được regex giới hạn nên an toàn)
       where.push(`sd.value ${op[1]} ?`);
       params.push(Number(op[2]));
     } else {
-      const text = escapeLike(keyword.replace(/%$/, "")); // "65%" -> "65"
+      const text = escapeLike(keyword.replace(/%$/, "")); 
       const haystack =
         mode === "time"
           ? `CONCAT_WS(' ', ${TIME_SQL}, ${DATE_SQL}, ${DMY_SQL})`
@@ -89,7 +87,6 @@ export async function listReadings({ mode, search, sort, page, pageSize }) {
   return { rows, total };
 }
 
-// Lưu một lần đo: mỗi cảm biến một dòng, cùng chung mốc thời gian ts
 export async function saveReading({ temperature, humidity, light }, ts) {
   const [sensors] = await pool.query(
     "SELECT id, type FROM sensors WHERE is_active = TRUE"

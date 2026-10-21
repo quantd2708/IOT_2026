@@ -18,7 +18,7 @@ const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:5000/ws";
 const RECONNECT_MS = 3000;
 const TIME_FORMAT_LOCALE = "vi-VN";
 const TIME_FORMAT_OPTS = { hour12: false };
-const LIGHT_DIVISOR = 40; // hệ số chia chỉ dùng để vẽ biểu đồ
+const LIGHT_DIVISOR = 40; 
 
 const formatTime = (date) => date.toLocaleTimeString(TIME_FORMAT_LOCALE, TIME_FORMAT_OPTS);
 
@@ -43,9 +43,14 @@ function Dashboard() {
   const [chartData, setChartData] = useState([]);
   const [devices, setDevices] = useState([]);
   const [busyIds, setBusyIds] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState("");
+
+  const [visibleLines, setVisibleLines] = useState({
+    temperature: true,
+    humidity: true,
+    lightChart: true,
+  });
 
   const sensors = useMemo(() => {
     const last = chartData[chartData.length - 1];
@@ -56,7 +61,6 @@ function Dashboard() {
     };
   }, [chartData]);
 
-  // Tải dữ liệu ban đầu qua REST
   const loadInitial = useCallback(async () => {
     try {
       const [rows, deviceList] = await Promise.all([
@@ -75,26 +79,50 @@ function Dashboard() {
     loadInitial();
   }, [loadInitial]);
 
-  // Nhận dữ liệu realtime qua WebSocket
   useEffect(() => {
     let ws;
     let timer;
+    let watchdogTimer; 
     let closed = false;
+
+    const handleOffline = () => {
+      setConnected(false);
+      if (ws) ws.close(); 
+    };
+    
+    const handleOnline = () => {
+      if (!connected) connect();
+    };
+
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("online", handleOnline);
 
     const connect = () => {
       ws = new WebSocket(WS_URL);
 
+      const resetWatchdog = () => {
+        clearTimeout(watchdogTimer);
+        watchdogTimer = setTimeout(() => {
+          console.warn("Watchdog: Không nhận được dữ liệu quá 10s, tự động ngắt kết nối.");
+          if (ws) ws.close(); 
+        }, 10000);
+      };
+
       ws.onopen = () => {
         setConnected(true);
-        loadInitial(); // nối lại sau khi mất mạng thì tải bù dữ liệu bị hụt
+        loadInitial(); 
+        resetWatchdog(); 
       };
 
       ws.onclose = () => {
         setConnected(false);
+        clearTimeout(watchdogTimer);
         if (!closed) timer = setTimeout(connect, RECONNECT_MS);
       };
 
       ws.onmessage = (event) => {
+        resetWatchdog(); 
+
         let msg;
         try {
           msg = JSON.parse(event.data);
@@ -117,14 +145,33 @@ function Dashboard() {
     return () => {
       closed = true;
       clearTimeout(timer);
+      clearTimeout(watchdogTimer); 
       ws?.close();
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("online", handleOnline);
     };
   }, [loadInitial]);
 
-  const fetchDashboard = async () => {
-    setLoading(true);
-    await loadInitial();
-    setLoading(false);
+  const toggleLine = (dataKey) => {
+    setVisibleLines((prev) => {
+      const isOnlyThisVisible = 
+        prev[dataKey] === true && 
+        Object.keys(prev).filter((k) => prev[k] === true).length === 1;
+
+      if (isOnlyThisVisible) {
+        return {
+          temperature: true,
+          humidity: true,
+          lightChart: true,
+        };
+      } else {
+        return {
+          temperature: dataKey === "temperature",
+          humidity: dataKey === "humidity",
+          lightChart: dataKey === "lightChart",
+        };
+      }
+    });
   };
 
   const toggleDevice = async (device) => {
@@ -132,6 +179,7 @@ function Dashboard() {
     setError("");
 
     try {
+      // await new Promise((resolve) => setTimeout(resolve, 3000));
       await toggleDeviceApi(device.id, !device.on);
       setDevices((prev) =>
         prev.map((d) => (d.id === device.id ? { ...d, on: !device.on } : d))
@@ -176,16 +224,25 @@ function Dashboard() {
       <section className="home-dashboard-main">
         <article className="home-chart-panel">
           <div className="home-chart-heading">
-            <h2>Biểu đồ giá trị các thông số theo thời gian</h2>
+            <h2>Biểu đồ giá trị cảm biến</h2>
 
             <div className="home-chart-legend">
-              <span className="legend-temp">
+              <span 
+                className={`legend-item legend-temp ${!visibleLines.temperature ? "is-hidden" : ""}`}
+                onClick={() => toggleLine("temperature")}
+              >
                 <i /> Nhiệt độ (°C)
               </span>
-              <span className="legend-humidity">
+              <span 
+                className={`legend-item legend-humidity ${!visibleLines.humidity ? "is-hidden" : ""}`}
+                onClick={() => toggleLine("humidity")}
+              >
                 <i /> Độ ẩm (%)
               </span>
-              <span className="legend-light">
+              <span 
+                className={`legend-item legend-light ${!visibleLines.lightChart ? "is-hidden" : ""}`}
+                onClick={() => toggleLine("lightChart")}
+              >
                 <i /> Độ sáng (lux) (÷{LIGHT_DIVISOR})
               </span>
             </div>
@@ -228,6 +285,7 @@ function Dashboard() {
                 />
 
                 <Line
+                  hide={!visibleLines.temperature}
                   isAnimationActive={false}
                   type="monotone"
                   dataKey="temperature"
@@ -239,6 +297,7 @@ function Dashboard() {
                 />
 
                 <Line
+                  hide={!visibleLines.humidity}
                   isAnimationActive={false}
                   type="monotone"
                   dataKey="humidity"
@@ -250,6 +309,7 @@ function Dashboard() {
                 />
 
                 <Line
+                  hide={!visibleLines.lightChart}
                   isAnimationActive={false}
                   type="monotone"
                   dataKey="lightChart"
@@ -286,7 +346,7 @@ function Dashboard() {
                   <div className="home-device-details">
                     <strong>{device.name}</strong>
                     <span>{device.location} · </span>
-                    <small className={device.on ? "is-on" : ""}>
+                    <small className={busy ? "is-busy" : device.on ? "is-on" : ""}>
                       {busy ? "Đang chờ..." : device.on ? "Bật" : "Tắt"}
                     </small>
                   </div>
@@ -307,10 +367,6 @@ function Dashboard() {
         </aside>
       </section>
 
-      <button className="home-dashboard-refresh" onClick={fetchDashboard} disabled={loading}>
-        <RefreshCw size={14} className={loading ? "is-spinning" : ""} />
-        {loading ? "Đang tải" : "Làm mới dữ liệu"}
-      </button>
     </main>
   );
 }

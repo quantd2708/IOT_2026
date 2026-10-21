@@ -18,7 +18,7 @@ async function start() {
 
   const server = http.createServer(app);
   initWebSocket(server);
-  initMqtt(); // MQTT lỗi không làm dừng server, thư viện tự kết nối lại
+  initMqtt(); 
 
   server.listen(PORT, () => {
     console.log(`Server chạy tại http://localhost:${PORT}`);

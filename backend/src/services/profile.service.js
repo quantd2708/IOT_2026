@@ -1,6 +1,5 @@
 import pool from "../config/db.js";
 
-// tên trường frontend -> tên cột DB (danh sách cho phép, cũng chống SQL injection)
 export const FIELD_MAP = {
   name: "full_name",
   studentId: "student_id",

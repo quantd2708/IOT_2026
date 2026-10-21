@@ -11,7 +11,6 @@ const ACTION_SQL = `CASE al.action
   WHEN 'TURN_OFF' THEN 'Tắt'
   ELSE al.action END`;
 
-// Thành công thì trạng thái = kết quả của hành động, còn lại là lỗi
 const STATUS_SQL = `CASE WHEN al.status = 'SUCCESS' THEN ${ACTION_SQL} ELSE 'Lỗi' END`;
 
 const ACTOR_SQL = `COALESCE(u.full_name, CASE al.triggered_by
